@@ -1,6 +1,7 @@
 import asyncio
 import json
 import time
+import argparse
 
 import websockets
 
@@ -21,7 +22,6 @@ async def get_media_info():
     # Then set TARGET_ID to the string this call returns.
 
     current_session = sessions.get_current_session()
-    current_session.add_media_properties_changed()
     if current_session:  # there needs to be a media session running
         info = await current_session.try_get_media_properties_async()
 
@@ -42,26 +42,36 @@ async def get_media_info():
 
 async def socket_handler(websocket: websockets.WebSocketServerProtocol):
     print("Connected")
+    delim = ";"
+
+    def esc(s: str):
+        return s.replace(delim, ',')
+
     last_info = None
     while True:
         try:
             media_info = await get_media_info()
             del media_info["thumbnail"]
         except IOError:
-            continue
+            media_info = None
         if last_info != media_info:
             print("Sending info")
-            await websocket.send(json.dumps(media_info, default=str))
+            await websocket.send(f"{esc(media_info['artist'])}{delim}{esc(media_info['title'])}{delim}"
+                                 f"{esc(media_info['album_artist'])}{delim}{esc(media_info['album_title'])}")
             last_info = media_info
         time.sleep(1)
         # TODO: Figure out how the add_media_properties_changed() callback method works and use that instead of busy
         #       waiting
 
 
-async def main():
-    async with websockets.serve(socket_handler, 'localhost', 33442):
+async def main(port, addr):
+    async with websockets.serve(socket_handler, addr, port):
         await asyncio.Future()
 
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    aparse = argparse.ArgumentParser(description="Send current Windows media information to websocket client.")
+    aparse.add_argument("-p", "--port", help="port to bind to", type=int, default=33442)
+    aparse.add_argument("-a", "--addr", help="address to bind to", type=str, default="localhost")
+    args = aparse.parse_args()
+    asyncio.run(main(port=args.port, addr=args.addr))
