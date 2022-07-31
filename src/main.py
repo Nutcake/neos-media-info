@@ -1,13 +1,11 @@
 import asyncio
-import json
 import time
 import argparse
 
 import websockets
 
 from winsdk.windows.media.control import \
-    GlobalSystemMediaTransportControlsSessionManager as MediaManager, GlobalSystemMediaTransportControlsSession, \
-    MediaPropertiesChangedEventArgs
+    GlobalSystemMediaTransportControlsSessionManager as MediaManager
 
 
 async def get_media_info():
